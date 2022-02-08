@@ -1,10 +1,3 @@
-.app {
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
 #img {
   margin-bottom: 20px;
 }
@@ -25,7 +18,6 @@
 }
 
 .mark {
-  font-family: Arial, Helvetica, sans-serif;
   padding: 10px 5px;
   background-color: #d3d3d3;
   color: #ff0000;

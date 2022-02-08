@@ -1,42 +1,41 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import './App.css'
 
+const ESCAPE_KEY = 'Escape'
 interface IMarkInfo {
   key: string
   top: number
   left: number
-  pageWidth: number
-  pageHeight: number
+  ratioToImgWidth: number
+  ratioToImgHeight: number
   text: string
 }
 
 function App() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const imgRef = useRef<HTMLImageElement>(null)
   const [fileBlob, setFileBlob] = useState<string>('')
   const [imgStyles, setImgStyles] = useState<object>({})
   const [currentMarkText, setCurrentMarkText] = useState<string>('')
   const [marksInfo, setMarksInfo] = useState<IMarkInfo[]>([])
   const [enableInputText, setEnableInputText] = useState<boolean>(false)
-  const [imgWidth, setImgWidth] = useState(0)
-  const [imgHeight, setImgHeight] = useState(0)
 
-  // useLayoutEffect(() => {
-  //   function updateCoordinates() {
-  //     const currentWidth = window.innerWidth
-  //     const currentHeight = window.innerHeight
-  //     const currentMarksInfo = marksInfo.map((m: IMarkInfo) => {
-  //       if (m.pageWidth !== currentWidth) {
+  useLayoutEffect(() => {
+    function updateCoordinates() {
+      const { width, height } = imgRef.current?.getBoundingClientRect() as DOMRect
+      const currentMarksInfo = marksInfo.map((m: IMarkInfo) => ({
+        ...m,
+        left: m.ratioToImgWidth * width,
+        top: m.ratioToImgHeight * height
+      }))
 
-  //       }
+      setMarksInfo(currentMarksInfo)
+    }
 
-  //       return m
-  //     })
-  //   }
+    window.addEventListener('resize', updateCoordinates)
 
-  //   window.addEventListener('resize', updateCoordinates)
-
-  //   return () => window.removeEventListener('resize', updateCoordinates)
-  // }, [])
+    return () => window.removeEventListener('resize', updateCoordinates)
+  }, [marksInfo])
 
   useEffect(() => {
     if (enableInputText && textareaRef.current) {
@@ -56,12 +55,10 @@ function App() {
       img.src = objectUrl
       img.onload = function () {
         const { width, height } = img
-        setImgHeight(height)
-        setImgWidth(width)
         if (width >= height) {
           setImgStyles({ width: '100%' })
         } else {
-          setImgStyles({ height: '100%' })
+          setImgStyles({ height: 'calc(100vh - 41px)' })
         }
         URL.revokeObjectURL(objectUrl)
       }
@@ -70,14 +67,18 @@ function App() {
 
   const handleSetMark = (e: React.MouseEvent<HTMLElement>) => {
     const { clientX, clientY } = e
+    const { width, height } = imgRef.current?.getBoundingClientRect() as DOMRect
+    const top = clientY - 10
+    const left = clientX - 4
     const newInfo: IMarkInfo = {
       key: `mark-${marksInfo.length}`,
-      top: clientY - 10,
-      left: clientX - 4,
-      pageWidth: window.innerWidth,
-      pageHeight: window.innerHeight,
-      text: ''
+      top,
+      left,
+      text: '',
+      ratioToImgHeight: top / height,
+      ratioToImgWidth: left / width
     }
+
     setMarksInfo(info => [...info, newInfo])
     setEnableInputText(true)
   }
@@ -99,11 +100,19 @@ function App() {
     setCurrentMarkText('')
   }
 
+  const handleEscapeTextarea = (e: React.KeyboardEvent) => {
+    if (e.key === ESCAPE_KEY) {
+      handleInputTextBlur()
+    }
+  }
+
   return (
-    <div className="app">
+    <div>
       <input type="file" id="img" name="img" accept="image/*" multiple={false} onChange={handleUploadFile} />
       <div className="editor">
-        {fileBlob && <img style={imgStyles} className="uploaded-img" alt="" src={fileBlob} onClick={handleSetMark} />}
+        {fileBlob && (
+          <img ref={imgRef} style={imgStyles} className="uploaded-img" alt="" src={fileBlob} onClick={handleSetMark} />
+        )}
         {marksInfo.map(
           (info: IMarkInfo, i: number) =>
             info.text && (
@@ -121,9 +130,10 @@ function App() {
             className="text-area"
             style={{ top: marksInfo[marksInfo.length - 1].top, left: marksInfo[marksInfo.length - 1].left }}
             ref={textareaRef}
-            rows={3}
+            rows={1}
             onChange={handleChangeInputText}
             onBlur={handleInputTextBlur}
+            onKeyDown={handleEscapeTextarea}
           />
         )}
       </div>
