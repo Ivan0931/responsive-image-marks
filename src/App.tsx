@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import './App.css'
 
 const ESCAPE_KEY = 'Escape'
+
 interface IMarkInfo {
   key: string
   top: number
