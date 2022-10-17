@@ -1,4 +1,5 @@
 {
+  "homepage": "https://Ivan0931.github.io/responsive-image-marks",
   "name": "responsive-image-marks",
   "version": "0.1.0",
   "dependencies": {
@@ -7,10 +8,12 @@
     "@types/react-dom": "17.0.11",
     "react": "17.0.2",
     "react-dom": "17.0.2",
-    "react-scripts": "5.0.0",
+    "react-scripts": "^5.0.0",
     "typescript": "4.5.5"
   },
   "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
@@ -37,5 +40,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "gh-pages": "^4.0.0"
   }
 }
