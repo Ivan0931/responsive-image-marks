@@ -1,7 +1,6 @@
 {
-  "name": "my-app",
+  "name": "responsive-image-marks",
   "version": "0.1.0",
-  "private": true,
   "dependencies": {
     "@types/node": "16.11.22",
     "@types/react": "17.0.39",
@@ -25,7 +24,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ivan0931/test_veeam.git"
+    "url": "git+https://github.com/Ivan0931/responsive-image-marks.git"
   },
   "browserslist": {
     "production": [

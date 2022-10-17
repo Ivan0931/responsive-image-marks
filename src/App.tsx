@@ -1,5 +1,6 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import React, { CSSProperties, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import './App.css'
+import InputImg from './components/InputImg'
 
 const ESCAPE_KEY = 'Escape'
 
@@ -15,6 +16,8 @@ interface IMarkInfo {
 function App() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
+  const [initialImgWidth, setInitialImgWidth] = useState<number>(0)
+  const [isInitAdaptiveWidth, setIsInitAdaptiveWidth] = useState<boolean>(false)
   const [fileBlob, setFileBlob] = useState<string>('')
   const [imgStyles, setImgStyles] = useState<object>({})
   const [currentMarkText, setCurrentMarkText] = useState<string>('')
@@ -23,20 +26,32 @@ function App() {
 
   useLayoutEffect(() => {
     function updateCoordinates() {
-      const { width, height } = imgRef.current?.getBoundingClientRect() as DOMRect
-      const currentMarksInfo = marksInfo.map((m: IMarkInfo) => ({
-        ...m,
-        left: m.ratioToImgWidth * width,
-        top: m.ratioToImgHeight * height
-      }))
+      const imgSizes = imgRef.current?.getBoundingClientRect() as DOMRect
 
-      setMarksInfo(currentMarksInfo)
+      if (imgSizes) {
+        const { width, height } = imgSizes
+
+        if (!isInitAdaptiveWidth) {
+          if (initialImgWidth >= window.innerWidth - 20) {
+            setImgStyles({ width: '100%' })
+          } else if (initialImgWidth < window.innerWidth - 20) {
+            setImgStyles({ height: window.innerHeight - 20 })
+          }
+        }
+
+        const currentMarksInfo = marksInfo.map((m: IMarkInfo) => ({
+          ...m,
+          left: m.ratioToImgWidth * width,
+          top: m.ratioToImgHeight * height
+        }))
+        setMarksInfo(currentMarksInfo)
+      }
     }
 
     window.addEventListener('resize', updateCoordinates)
 
     return () => window.removeEventListener('resize', updateCoordinates)
-  }, [marksInfo])
+  }, [initialImgWidth, isInitAdaptiveWidth, marksInfo])
 
   useEffect(() => {
     if (enableInputText && textareaRef.current) {
@@ -44,7 +59,20 @@ function App() {
     }
   }, [enableInputText, textareaRef])
 
-  const handleUploadFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const setInitialImgStyleAndSize = (img: HTMLImageElement) => {
+    const { width, height } = img
+    if (width >= height) {
+      setIsInitAdaptiveWidth(true)
+      setImgStyles({ width: '100%' })
+    } else {
+      const newHeight = window.innerHeight - 20
+      const ratio = newHeight / height
+      setInitialImgWidth(width * ratio)
+      setImgStyles({ height: newHeight })
+    }
+  }
+
+  const handleUploadFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault()
     const { files } = e.target
     const file = files && files[0]
@@ -55,22 +83,19 @@ function App() {
       setFileBlob(objectUrl)
       img.src = objectUrl
       img.onload = function () {
-        const { width, height } = img
-        if (width >= height) {
-          setImgStyles({ width: '100%' })
-        } else {
-          setImgStyles({ height: 'calc(100vh - 41px)' })
-        }
+        setInitialImgStyleAndSize(img)
         URL.revokeObjectURL(objectUrl)
       }
     }
-  }
+  }, [])
 
   const handleSetMark = (e: React.MouseEvent<HTMLElement>) => {
     const { clientX, clientY } = e
     const { width, height } = imgRef.current?.getBoundingClientRect() as DOMRect
+    // correct a position of the text mark
     const top = clientY - 10
     const left = clientX - 4
+
     const newInfo: IMarkInfo = {
       key: `mark-${marksInfo.length}`,
       top,
@@ -107,21 +132,25 @@ function App() {
     }
   }
 
+  const getMarkStyles = useCallback(({ top, left }: IMarkInfo): CSSProperties => {
+    return {
+      top: top - 8,
+      left: left - 3,
+      position: 'absolute'
+    }
+  }, [])
+
   return (
     <div>
-      <input type="file" id="img" name="img" accept="image/*" multiple={false} onChange={handleUploadFile} />
-      <div className="editor">
-        {fileBlob && (
+      {!Boolean(fileBlob) && <InputImg handleUploadFile={handleUploadFile} />}
+      <div id="editor-container">
+        {Boolean(fileBlob) && (
           <img ref={imgRef} style={imgStyles} className="uploaded-img" alt="" src={fileBlob} onClick={handleSetMark} />
         )}
         {marksInfo.map(
           (info: IMarkInfo, i: number) =>
             info.text && (
-              <div
-                className="mark"
-                key={`${info.text}-${i}`}
-                style={{ top: info.top - 8, left: info.left - 3, position: 'absolute' }}
-              >
+              <div className="mark" key={`${info.text}-${i}`} style={getMarkStyles(info)}>
                 {info.text}
               </div>
             )
