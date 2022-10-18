@@ -11,4 +11,4 @@ Requirements:
 
 Example:
 
-![example](ezgif.gif)
+![example](ezgif-1.gif)
