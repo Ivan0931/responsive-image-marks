@@ -1,17 +1,10 @@
 import React, { CSSProperties, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import './App.css'
 import InputImg from './components/InputImg'
-
-const ESCAPE_KEY = 'Escape'
-
-interface IMarkInfo {
-  key: string
-  top: number
-  left: number
-  ratioToImgWidth: number
-  ratioToImgHeight: number
-  text: string
-}
+import UploadedImage from './components/UploadedImage'
+import InputText from './components/InputText'
+import { ESCAPE_KEY } from './constants'
+import { IMarkInfo } from './interfaces'
 
 function App() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -24,34 +17,42 @@ function App() {
   const [marksInfo, setMarksInfo] = useState<IMarkInfo[]>([])
   const [enableInputText, setEnableInputText] = useState<boolean>(false)
 
+  const updateMarksInfo = useCallback(
+    ({ width, height }: DOMRect) => {
+      const currentMarksInfo = marksInfo.map((m: IMarkInfo) => ({
+        ...m,
+        left: m.ratioToImgWidth * width,
+        top: m.ratioToImgHeight * height
+      }))
+      setMarksInfo(currentMarksInfo)
+    },
+    [marksInfo]
+  )
+
+  const updateImgSizeOnResize = useCallback(() => {
+    if (initialImgWidth >= window.innerWidth - 20) {
+      setImgStyles({ width: '100%' })
+    } else if (initialImgWidth < window.innerWidth - 20) {
+      setImgStyles({ height: window.innerHeight - 20 })
+    }
+  }, [initialImgWidth])
+
   useLayoutEffect(() => {
-    function updateCoordinates() {
-      const imgSizes = imgRef.current?.getBoundingClientRect() as DOMRect
+    function updateImgStylesAndSize() {
+      const imgElement = imgRef.current?.getBoundingClientRect() as DOMRect
 
-      if (imgSizes) {
-        const { width, height } = imgSizes
-
+      if (imgElement) {
         if (!isInitAdaptiveWidth) {
-          if (initialImgWidth >= window.innerWidth - 20) {
-            setImgStyles({ width: '100%' })
-          } else if (initialImgWidth < window.innerWidth - 20) {
-            setImgStyles({ height: window.innerHeight - 20 })
-          }
+          updateImgSizeOnResize()
         }
-
-        const currentMarksInfo = marksInfo.map((m: IMarkInfo) => ({
-          ...m,
-          left: m.ratioToImgWidth * width,
-          top: m.ratioToImgHeight * height
-        }))
-        setMarksInfo(currentMarksInfo)
+        updateMarksInfo(imgElement)
       }
     }
 
-    window.addEventListener('resize', updateCoordinates)
+    window.addEventListener('resize', updateImgStylesAndSize)
 
-    return () => window.removeEventListener('resize', updateCoordinates)
-  }, [initialImgWidth, isInitAdaptiveWidth, marksInfo])
+    return () => window.removeEventListener('resize', updateImgStylesAndSize)
+  }, [initialImgWidth, isInitAdaptiveWidth, updateImgSizeOnResize, updateMarksInfo])
 
   useEffect(() => {
     if (enableInputText && textareaRef.current) {
@@ -134,6 +135,7 @@ function App() {
 
   const getMarkStyles = useCallback(({ top, left }: IMarkInfo): CSSProperties => {
     return {
+      // correct a position
       top: top - 8,
       left: left - 3,
       position: 'absolute'
@@ -144,9 +146,7 @@ function App() {
     <div>
       {!Boolean(fileBlob) && <InputImg handleUploadFile={handleUploadFile} />}
       <div id="editor-container">
-        {Boolean(fileBlob) && (
-          <img ref={imgRef} style={imgStyles} className="uploaded-img" alt="" src={fileBlob} onClick={handleSetMark} />
-        )}
+        <UploadedImage ref={imgRef} src={fileBlob} style={imgStyles} onClick={handleSetMark} />
         {marksInfo.map(
           (info: IMarkInfo, i: number) =>
             info.text && (
@@ -156,11 +156,9 @@ function App() {
             )
         )}
         {enableInputText && (
-          <textarea
-            className="text-area"
-            style={{ top: marksInfo[marksInfo.length - 1].top, left: marksInfo[marksInfo.length - 1].left }}
+          <InputText
             ref={textareaRef}
-            rows={1}
+            marksInfo={marksInfo}
             onChange={handleChangeInputText}
             onBlur={handleInputTextBlur}
             onKeyDown={handleEscapeTextarea}
